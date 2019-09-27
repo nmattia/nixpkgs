@@ -14,7 +14,7 @@
 , buildPackages
 , debugVersion ? false
 , enableManpages ? false
-, enableSharedLibraries ? true
+, enableSharedLibraries ? ! stdenv.hostPlatform.isMusl
 , enablePFM ? !(stdenv.isDarwin
   || stdenv.isAarch64 # broken for Ampere eMAG 8180 (c2.large.arm on Packet) #56245
   )
@@ -23,6 +23,7 @@
 
 let
   inherit (stdenv.lib) optional optionals optionalString;
+  isMusl = stdenv.hostPlatform.isMusl;
 
   # Used when creating a versioned symlinks of libLLVM.dylib
   versionSuffixes = with stdenv.lib;
@@ -32,6 +33,7 @@ let
 in stdenv.mkDerivation ({
   name = "llvm-${version}";
 
+  #src =
   src = fetch "llvm" "0r1p5didv4rkgxyvbkyz671xddg6i3dxvbpsi1xxipkla0l9pk0v";
   polly_src = fetch "polly" "16qkns4ab4x0azrvhy4j7cncbyb2rrbdrqj87zphvqxm5pvm8m1h";
 
@@ -72,6 +74,15 @@ in stdenv.mkDerivation ({
       --replace 'set(_install_name_dir INSTALL_NAME_DIR "@rpath")' "set(_install_name_dir)" \
       --replace 'set(_install_rpath "@loader_path/../lib" ''${extra_libdir})' ""
   ''
+  # looks like
+  # cd /build/llvm/build/lib/Transforms/Hello && x86_64-unknown-linux-musl-g++  -D__STDC_CONSTANT_MACROS -D__STDC_FORMAT_MACROS -D__STDC_LIMIT_MACROS -I/build/llvm/build/lib/Transforms/Hello -I/build/llvm/lib/Transforms/Hello -I<nix>/include/libxml2 -I/build/llvm/build/include -I/build/llvm/include  -fPIC -fvisibility-inlines-hidden -Werror=date-time -std=c++11 -Wall -Wextra -Wno-unused-parameter -Wwrite-strings -Wcast-qual -Wno-missing-field-initializers -pedantic -Wno-long-long -Wno-maybe-uninitialized -Wno-class-memaccess -Wdelete-non-virtual-dtor -Wno-comment -ffunction-sections -fdata-sections -O3 -DNDEBUG -fPIC    -fno-exceptions -o CMakeFiles/LLVMHello.dir/Hello.cpp.o -c /build/llvm/lib/Transforms/Hello/Hello.cpp
+  # only has two "-fPIC"s (as opposed to:
+  # cd /build/llvm/build/lib/Transforms/Instrumentation && x86_64-unknown-linux-musl-g++  -D__STDC_CONSTANT_MACROS -D__STDC_FORMAT_MACROS -D__STDC_LIMIT_MACROS -I/build/llvm/build/lib/Transforms/Instrumentation -I/build/llvm/lib/Transforms/Instrumentation -I<nix>/include/libxml2 -I/build/llvm/build/include -I/build/llvm/include  -fPIC -fvisibility-inlines-hidden -Werror=date-time -std=c++11 -Wall -Wextra -Wno-unused-parameter -Wwrite-strings -Wcast-qual -Wno-missing-field-initializers -pedantic -Wno-long-long -Wno-maybe-uninitialized -Wno-class-memaccess -Wdelete-non-virtual-dtor -Wno-comment -ffunction-sections -fdata-sections -O3 -DNDEBUG    -fno-exceptions -o CMakeFiles/LLVMInstrumentation.dir/DataFlowSanitizer.cpp.o -c /build/llvm/lib/Transforms/Instrumentation/DataFlowSanitizer.cpp
+
+  + optionalString isMusl ''
+    sed -i '/Hello/d'  lib/Transforms/CMakeLists.txt
+    sed -i '/Hello/d'  test/CMakeLists.txt
+  ''
   # Patch llvm-config to return correct library path based on --link-{shared,static}.
   + optionalString (enableSharedLibraries) ''
     substitute '${./llvm-outputs.patch}' ./llvm-outputs.patch --subst-var lib
@@ -104,7 +115,16 @@ in stdenv.mkDerivation ({
     ln -sv $PWD/lib $out
   '';
 
-  cmakeFlags = with stdenv; [
+  cmakeFlags = with stdenv; optionals (stdenv.hostPlatform.libc == "musl") [
+    "-DCMAKE_BUILD_PARALLEL_LEVEL=1"
+    "-DBUILD_SHARED_LIBS=OFF"
+    "-DCMAKE_VERBOSE_MAKEFILE=ON"
+    "-DLLVM_BUILD_STATIC=ON"
+    "-DLLVM_INCLUDE_TESTS=OFF"
+    "-DLLVM_BUILD_TESTS=OFF"
+    #"-DLLVM_BUILD_TOOLS=OFF"
+    #"-DLLVM_INCLUDE_TOOLS=OFF"
+    ] ++ [
     "-DCMAKE_BUILD_TYPE=${if debugVersion then "Debug" else "Release"}"
     "-DLLVM_INSTALL_UTILS=ON"  # Needed by rustc
     "-DLLVM_BUILD_TESTS=ON"
