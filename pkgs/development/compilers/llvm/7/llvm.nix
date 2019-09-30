@@ -122,8 +122,7 @@ in stdenv.mkDerivation ({
     "-DLLVM_BUILD_STATIC=ON"
     "-DLLVM_INCLUDE_TESTS=OFF"
     "-DLLVM_BUILD_TESTS=OFF"
-    #"-DLLVM_BUILD_TOOLS=OFF"
-    #"-DLLVM_INCLUDE_TOOLS=OFF"
+    "-DLLVM_TOOL_LTO_BUILD=OFF"
     ] ++ [
     "-DCMAKE_BUILD_TYPE=${if debugVersion then "Debug" else "Release"}"
     "-DLLVM_INSTALL_UTILS=ON"  # Needed by rustc
@@ -191,6 +190,14 @@ in stdenv.mkDerivation ({
     maintainers = with stdenv.lib.maintainers; [ lovek323 raskin dtzWill ];
     platforms   = stdenv.lib.platforms.all;
   };
+} // stdenv.lib.optionalAttrs isMusl {
+
+  #buildPhase = ''
+    #make dsymutil -j48
+  #'';
+
+
+
 } // stdenv.lib.optionalAttrs enableManpages {
   name = "llvm-manpages-${version}";
 
