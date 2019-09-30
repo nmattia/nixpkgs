@@ -80,8 +80,15 @@ in stdenv.mkDerivation ({
   # cd /build/llvm/build/lib/Transforms/Instrumentation && x86_64-unknown-linux-musl-g++  -D__STDC_CONSTANT_MACROS -D__STDC_FORMAT_MACROS -D__STDC_LIMIT_MACROS -I/build/llvm/build/lib/Transforms/Instrumentation -I/build/llvm/lib/Transforms/Instrumentation -I<nix>/include/libxml2 -I/build/llvm/build/include -I/build/llvm/include  -fPIC -fvisibility-inlines-hidden -Werror=date-time -std=c++11 -Wall -Wextra -Wno-unused-parameter -Wwrite-strings -Wcast-qual -Wno-missing-field-initializers -pedantic -Wno-long-long -Wno-maybe-uninitialized -Wno-class-memaccess -Wdelete-non-virtual-dtor -Wno-comment -ffunction-sections -fdata-sections -O3 -DNDEBUG    -fno-exceptions -o CMakeFiles/LLVMInstrumentation.dir/DataFlowSanitizer.cpp.o -c /build/llvm/lib/Transforms/Instrumentation/DataFlowSanitizer.cpp
 
   + optionalString isMusl ''
+    # all these use `add_llvm_loadable_module` which always generates shared
+    # objects
+    # NOTE: I'm not sure whether it _must_ always generate shared
+    # objects or if it's a bug in the cmake setup
     sed -i '/Hello/d'  lib/Transforms/CMakeLists.txt
     sed -i '/Hello/d'  test/CMakeLists.txt
+    sed -i '/BugpointPasses/d'  test/CMakeLists.txt
+    rm -rf tools/gold
+    rm -rf tools/bugpoint-passes
   ''
   # Patch llvm-config to return correct library path based on --link-{shared,static}.
   + optionalString (enableSharedLibraries) ''
@@ -123,6 +130,7 @@ in stdenv.mkDerivation ({
     "-DLLVM_INCLUDE_TESTS=OFF"
     "-DLLVM_BUILD_TESTS=OFF"
     "-DLLVM_TOOL_LTO_BUILD=OFF"
+    "-DLLVM_LINK_LLVM_DYLIB=OFF"
     ] ++ [
     "-DCMAKE_BUILD_TYPE=${if debugVersion then "Debug" else "Release"}"
     "-DLLVM_INSTALL_UTILS=ON"  # Needed by rustc
@@ -193,10 +201,16 @@ in stdenv.mkDerivation ({
 } // stdenv.lib.optionalAttrs isMusl {
 
   #buildPhase = ''
-    #make dsymutil -j48
+    #echo "BUILDING LTO"
+    #make LTO -j48
+    #echo "DONE"
+    #echo "BUILDING GOLD"
+    #make LLVMgold -j48
+    #echo "DONE"
+    #echo "BUILDING LTO"
+    #make llvm-lto -j48
+    #echo "DONE"
   #'';
-
-
 
 } // stdenv.lib.optionalAttrs enableManpages {
   name = "llvm-manpages-${version}";
