@@ -175,4 +175,10 @@ in {
   };
 
   python27 = super.python27.override { static = true; };
+
+  rustPackages = super.rustPackages // {
+    rustc = super.rustPackages.rustc.override
+      { stdenv = super.stdenv; };
+
+  };
 }

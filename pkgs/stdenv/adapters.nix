@@ -44,9 +44,14 @@ rec {
       then throw "Cannot build fully static binaries on Darwin/macOS"
       else stdenv'.mkDerivation (args // {
         NIX_CFLAGS_LINK = toString (args.NIX_CFLAGS_LINK or "") + " -static";
-        configureFlags = (args.configureFlags or []) ++ [
-            "--disable-shared" # brrr...
-          ];
+        configureFlags =
+          let
+            origFlags = args.configureFlags or [];
+            newFlags = origFlags ++
+              pkgs.lib.optional
+                (! builtins.elem "--disable-shared" (pkgs.lib.flatten origFlags))
+                "--disable-shared";
+          in pkgs.lib.traceVal newFlags;
       });
     };
 

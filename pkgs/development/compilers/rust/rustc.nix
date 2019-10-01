@@ -3,6 +3,9 @@
 , llvmPackages_7, darwin, git, cmake, rustPlatform
 , which, libffi, gdb
 , withBundledLLVM ? false
+, autoreconfHook
+, autoconf
+, libunwind
 }:
 
 let
@@ -11,15 +14,15 @@ let
 
   llvmPackages = llvmPackages_7;
 
-  llvmSharedForBuild = pkgsBuildBuild.llvmPackages.llvm.override { enableSharedLibraries = true; };
-  llvmSharedForHost = pkgsBuildHost.llvmPackages.llvm.override { enableSharedLibraries = true; };
-  llvmSharedForTarget = pkgsBuildTarget.llvmPackages.llvm.override { enableSharedLibraries = true; };
+  llvmSharedForBuild = pkgsBuildBuild.llvmPackages.llvm; #.override { enableSharedLibraries = true; };
+  llvmSharedForHost = pkgsBuildHost.llvmPackages.llvm; #.override { enableSharedLibraries = true; };
+  llvmSharedForTarget = pkgsBuildTarget.llvmPackages.llvm; #.override { enableSharedLibraries = true; };
 
   # For use at runtime
-  llvmShared = llvmPackages.llvm.override { enableSharedLibraries = true; };
+  llvmShared = llvmPackages.llvm; # .override { enableSharedLibraries = true; };
 in
 
-stdenv.mkDerivation rec {
+stdenv.mkDerivation (rec {
   pname = "rustc";
   version = "1.37.0";
 
@@ -32,7 +35,7 @@ stdenv.mkDerivation rec {
   preConfigure = ''
     mkdir src/llvm-project/compiler-rt
     tar xf ${llvmPackages.compiler-rt.src} -C src/llvm-project/compiler-rt --strip-components=1
-  '';
+  ''; #  + optionalString stdenv.buildPlatform.isMusl "exit 1";
 
   __darwinAllowLocalNetworking = true;
 
@@ -97,7 +100,20 @@ stdenv.mkDerivation rec {
     "${setTarget}.llvm-config=${llvmSharedForTarget}/bin/llvm-config"
   ] ++ optional stdenv.isLinux [
     "--enable-profiler" # build libprofiler_builtins
-  ];
+  ] ++ optional stdenv.targetPlatform.isMusl (
+    let
+      musl-root = pkgsBuildHost.symlinkJoin
+        { name = "musl-root";
+          paths = [ pkgsBuildTarget.musl libunwind ];
+        };
+    in
+
+  [
+    "${setTarget}.musl-root=${musl-root}"
+
+
+  ]);
+
 
   # The bootstrap.py will generated a Makefile that then executes the build.
   # The BOOTSTRAP_ARGS used by this Makefile must include all flags to pass
@@ -222,4 +238,7 @@ stdenv.mkDerivation rec {
     license = [ licenses.mit licenses.asl20 ];
     platforms = platforms.linux ++ platforms.darwin;
   };
-}
+} // stdenv.lib.optionalAttrs stdenv.hostPlatform.isMusl {
+
+  preAutoreconf = " exit 1";
+})
