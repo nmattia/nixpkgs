@@ -51,7 +51,7 @@ rec {
               pkgs.lib.optional
                 (! builtins.elem "--disable-shared" (pkgs.lib.flatten origFlags))
                 "--disable-shared";
-          in pkgs.lib.traceVal newFlags;
+          in newFlags;
       });
     };
 

@@ -110,9 +110,12 @@ stdenv.mkDerivation (rec {
 
   [
     "${setTarget}.musl-root=${musl-root}"
-
-
-  ]);
+  ] ++ optional stdenv.hostPlatform.isMusl
+  [ # (abort "bar")
+    # fix for dylib in arena
+    "--set=target.${stdenv.lib.traceVal stdenv.hostPlatform.config}.crt-static=false"
+  ]
+  );
 
 
   # The bootstrap.py will generated a Makefile that then executes the build.
@@ -238,7 +241,6 @@ stdenv.mkDerivation (rec {
     license = [ licenses.mit licenses.asl20 ];
     platforms = platforms.linux ++ platforms.darwin;
   };
-} // stdenv.lib.optionalAttrs stdenv.hostPlatform.isMusl {
-
-  preAutoreconf = " exit 1";
+} // stdenv.lib.optionalAttrs stdenv.buildPlatform.isMusl {
+  #RUSTFLAGS="-C target-feature=-crt-static";
 })
