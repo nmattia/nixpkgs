@@ -4,11 +4,16 @@
 , pkgconfig, openssl
 , which, libffi
 , withBundledLLVM ? false
+, musl
+, pkgsStatic
+, runCommand
 }:
 
 let
   inherit (stdenv.lib) optional optionalString;
   inherit (darwin.apple_sdk.frameworks) Security;
+
+  traceWith = str: val: builtins.trace "${str}: ${val}" val;
 
   llvmSharedForBuild = pkgsBuildBuild.llvm_7.override { enableSharedLibraries = true; };
   llvmSharedForHost = pkgsBuildHost.llvm_7.override { enableSharedLibraries = true; };
@@ -60,15 +65,27 @@ in stdenv.mkDerivation rec {
     cxxForHost = "${pkgsBuildHost.targetPackages.stdenv.cc}/bin/${pkgsBuildHost.targetPackages.stdenv.cc.targetPrefix}c++";
     ccForTarget  = "${pkgsBuildTarget.targetPackages.stdenv.cc}/bin/${pkgsBuildTarget.targetPackages.stdenv.cc.targetPrefix}cc";
     cxxForTarget = "${pkgsBuildTarget.targetPackages.stdenv.cc}/bin/${pkgsBuildTarget.targetPackages.stdenv.cc.targetPrefix}c++";
+    muslRoot = runCommand "musl-root" {}
+      ''
+        mkdir -p $out
+        cp -r ${musl}/* $out
+
+        mkdir -p $out/lib
+        #chown -R $out/lib
+        chmod +w $out/lib
+        cp ${pkgsStatic.libunwind}/lib/libunwind.a $out/lib
+      '';
   in [
     "--release-channel=stable"
     "--set=build.rustc=${rustPlatform.rust.rustc}/bin/rustc"
     "--set=build.cargo=${rustPlatform.rust.cargo}/bin/cargo"
     "--enable-rpath"
     "--enable-vendor"
-    "--build=${stdenv.buildPlatform.config}"
-    "--host=${stdenv.hostPlatform.config}"
-    "--target=${stdenv.targetPlatform.config}"
+    "--build=${traceWith "build" stdenv.buildPlatform.config}"
+    "--host=${traceWith "host" stdenv.hostPlatform.config}"
+    "--target=x86_64-unknown-linux-musl"
+    "--set=target.x86_64-unknown-linux-musl.musl-root=${muslRoot}"
+    #"--target=${traceWith "target" stdenv.targetPlatform.config},x86_64-unknown-linux-musl"
 
     "${setBuild}.cc=${ccForBuild}"
     "${setHost}.cc=${ccForHost}"
