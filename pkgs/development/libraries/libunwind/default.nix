@@ -9,6 +9,11 @@ stdenv.mkDerivation rec {
     sha256 = "1y0l08k6ak1mqbfj6accf9s5686kljwgsl4vcqpxzk5n74wpm6a3";
   };
 
+  # There's no "gcc_s" (shared gcc lib) on musl.
+  preAutoreconf = stdenv.lib.optionalString stdenv.hostPlatform.isMusl ''
+    sed -i 's/lgcc_s/lgcc/' configure.ac
+  '';
+
   patches = [ ./backtrace-only-with-glibc.patch ];
 
   nativeBuildInputs = [ autoreconfHook ];
