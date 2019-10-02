@@ -85,6 +85,9 @@ in stdenv.mkDerivation rec {
     "--host=${traceWith "host" stdenv.hostPlatform.config}"
     "--target=x86_64-unknown-linux-musl"
     "--set=target.x86_64-unknown-linux-musl.musl-root=${muslRoot}"
+    "--set=target.x86_64-unknown-linux-musl.cc=${pkgsStatic.stdenv.cc}/bin/${pkgsStatic.stdenv.cc.targetPrefix}cc"
+    "--set=target.x86_64-unknown-linux-musl.cxx=${pkgsStatic.stdenv.cc}/bin/${pkgsStatic.stdenv.cc.targetPrefix}c++"
+    "--set=target.x86_64-unknown-linux-musl.linker=${pkgsStatic.stdenv.cc}/bin/${pkgsStatic.stdenv.cc.targetPrefix}cc"
     #"--target=${traceWith "target" stdenv.targetPlatform.config},x86_64-unknown-linux-musl"
 
     "${setBuild}.cc=${ccForBuild}"
