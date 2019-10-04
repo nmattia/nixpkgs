@@ -143,6 +143,8 @@ let
 
     libcxxabi = callPackage ./libc++abi.nix {};
 
+    libunwind = callPackage ./libunwind.nix {};
+
     openmp = callPackage ./openmp.nix {};
   });
 
