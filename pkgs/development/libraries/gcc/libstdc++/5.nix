@@ -93,7 +93,7 @@ stdenv.mkDerivation rec {
 
   nativeBuildInputs = [ flex bison file ];
 
-  configureFlags = [ "--disable-multilib" "--enable-__cxa-atexit" "--enable-threads=posix" "--enable-languages=c++" "--enable-clocale=gnu" ];
+  configureFlags = [ "--enable-static" "--disable-multilib" "--enable-__cxa-atexit" "--enable-threads=posix" "--enable-languages=c++" "--enable-clocale=gnu" ];
 
   buildFLags = [ "all-target-libstdc++-v3" ];
 
@@ -103,7 +103,7 @@ stdenv.mkDerivation rec {
     # Remove includefiles and libs provided by gcc
     shopt -s extglob
     rm -rf $out/{bin,include,share,man,info}
-    rm -f $out/lib/*.a
+    #rm -f $out/lib/*.a
     rm -rf $out/lib/!(libstdc++*)
   '';
 
