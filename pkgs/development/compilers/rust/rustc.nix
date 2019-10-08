@@ -55,9 +55,9 @@ in stdenv.mkDerivation rec {
   # We need rust to build rust. If we don't provide it, configure will try to download it.
   # Reference: https://github.com/rust-lang/rust/blob/master/src/bootstrap/configure.py
   configureFlags = let
-    setBuild  = "--set=target.${stdenv.buildPlatform.config}";
-    setHost   = "--set=target.${stdenv.hostPlatform.config}";
-    setTarget = "--set=target.${stdenv.targetPlatform.config}";
+    #setBuild  = "--set=target.${stdenv.buildPlatform.config}";
+    #setHost   = "--set=target.${stdenv.hostPlatform.config}";
+    #setTarget = "--set=target.${stdenv.targetPlatform.config}";
     ccForBuild  = "${pkgsBuildBuild.targetPackages.stdenv.cc}/bin/${pkgsBuildBuild.targetPackages.stdenv.cc.targetPrefix}cc";
     cxxForBuild = "${pkgsBuildBuild.targetPackages.stdenv.cc}/bin/${pkgsBuildBuild.targetPackages.stdenv.cc.targetPrefix}c++";
     #ccForHost  = "${pkgsBuildHost.targetPackages.stdenv.cc}/bin/${pkgsBuildHost.targetPackages.stdenv.cc.targetPrefix}cc";
@@ -88,9 +88,11 @@ in stdenv.mkDerivation rec {
     "--set=target.x86_64-unknown-linux-gnu.cc=${ccForBuild}"
     "--set=target.x86_64-unknown-linux-gnu.linker=${ccForBuild}"
     "--set=target.x86_64-unknown-linux-gnu.cxx=${cxxForBuild}"
+
     "--set=target.x86_64-unknown-linux-musl.cc=${ccForTarget}"
-    "--set=target.x86_64-unknown-linux-musl.linker=${stdenv.lib.traceVal ccForTarget}"
+    "--set=target.x86_64-unknown-linux-musl.linker=${ccForTarget}"
     "--set=target.x86_64-unknown-linux-musl.cxx=${cxxForTarget}"
+
     "--set=target.x86_64-unknown-linux-musl.musl-root=${muslRoot}"
   ] ++ optional (!withBundledLLVM) [
   ] ++ optional stdenv.isLinux [
