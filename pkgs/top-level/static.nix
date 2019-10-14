@@ -194,4 +194,13 @@ in {
   };
 
   python27 = super.python27.override { static = true; };
+
+
+  libressl = super.libressl_3_0.overrideAttrs (oldAttrs: {
+      # Enables `.a` for libressl: https://github.com/NixOS/nixpkgs/issues/69104
+      cmakeFlags =
+        self.lib.filter (f: f != "-DBUILD_SHARED_LIBS=ON") oldAttrs.cmakeFlags;
+    }
+  );
+
 }
